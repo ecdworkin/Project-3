@@ -6,8 +6,17 @@ app = marimo.App()
 
 @app.cell
 def __():
+    #library import section
     import marimo as mo
-    return mo,
+    import pandas as pd
+    return mo, pd
+
+
+@app.cell
+def __():
+    #csv file import section
+
+    return
 
 
 @app.cell
@@ -19,6 +28,11 @@ def __(mo):
 @app.cell
 def __(mo):
     mo.md("Welcome to our tool! This application was created using Marimo notebook and the Marimo library. Please feel free to interact with the sliders. The weight you prescribe to each data set influences the zip code recommended by the program.")
+    return
+
+
+@app.cell
+def __():
     return
 
 

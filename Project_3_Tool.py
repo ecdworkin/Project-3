@@ -9,7 +9,8 @@ def __():
     #library import section
     import marimo as mo
     import pandas as pd
-    return mo, pd
+    import numpy as np
+    return mo, np, pd
 
 
 @app.cell
@@ -17,30 +18,72 @@ def __(pd):
     #read in the income csv
     median_income = "Las Vegas Median Income - Zip Code.csv"
     median_income_df = pd.read_csv(median_income)
+    income_columns = ['2018 Median income', '2019 Median income', '2020 Median income', '2021 Median income', '2022 Median income']
+
+    for col in income_columns:
+        # Remove commas and convert to numeric
+        median_income_df[col] = median_income_df[col].str.replace(',', '').astype(float)
+
+    return col, income_columns, median_income, median_income_df
+
+
+@app.cell
+def __(income_columns, median_income_df, np):
+    # Calculate the slope for income
+    def calculate_slope(row):
+        # Filter out NaN values
+        valid_data = row[income_columns].dropna()
+        if len(valid_data) >= 2:  # Need at least two points to calculate slope
+            # Get the corresponding years for the valid data
+            valid_years = np.array([int(col.split()[0]) for col in valid_data.index])
+            # Calculate the slope
+            slope, _ = np.polyfit(valid_years, valid_data.values, 1)
+            return slope
+        else:
+            return np.nan  # Not enough data to calculate slope
+
+    # Apply the function to calculate the income trend
+    median_income_df['Income Trend'] = median_income_df.apply(calculate_slope, axis=1)
+        
+    return calculate_slope,
+
+
+@app.cell
+def __(median_income_df):
+    #add ranking for income
+    median_income_df['Income Rank'] = median_income_df['Income Trend'].rank(method='dense', ascending=True).astype(int)
+
     #print(median_income_df)
-    return median_income, median_income_df
+    return
 
 
 @app.cell
 def __():
     #read in crime rate CSV
 
-    #create two new dfs from the csv - violent and non violent crime
-
-
     return
 
 
 @app.cell
-def __():
-    #read in build rate CSV. Note: Build rate csv uses completions
-
-    return
+def __(pd):
+    #read in population CSV.
+    population_data = "Population Data CSV.csv"
+    population_data_df = pd.read_csv(population_data)
+    population_data_df['Population Rank'] = population_data_df['% Change'].rank(method='dense', ascending=True).astype(int)
+    #NOTE: We used ascending to assign rank so that the slider weight can be multiplied by the rank (desireability score will be highest number) 
+    #print(population_data_df)
+    return population_data, population_data_df
 
 
 @app.cell
 def __():
     #read in pricing trend CSV
+    return
+
+
+@app.cell
+def __():
+    #merge dataframes on zip code?
     return
 
 
@@ -58,27 +101,15 @@ def __(mo):
 
 @app.cell
 def __():
+    #crime_slider = mo.ui.slider(0, 10, label= "Violent Crime Rate")
+    #crime_slider
     return
-
-
-@app.cell
-def __(mo):
-    crime_slider = mo.ui.slider(0, 10, label= "Violent Crime Rate")
-    crime_slider
-    return crime_slider,
 
 
 @app.cell
 def __():
     #crime_slider_2 = mo.ui.slider(0, 10, label= "Non-Violent Crime Rate")
     #crime_slider_2
-    return
-
-
-@app.cell
-def __():
-    #build_rate_slider = mo.ui.slider(0, 10, label= "New Build Rate (lowest to highest)")
-    #build_rate_slider
     return
 
 
@@ -91,10 +122,16 @@ def __(mo):
 
 @app.cell
 def __(mo):
-    #can we make this a range filter?
-    price_trend_slider = mo.ui.slider(0,10, label= "Pricing Trend (lowest prices to highest)")
-    price_trend_slider
-    return price_trend_slider,
+    median_income_slider = mo.ui.slider(0, 10, label= "High Median Income")
+    median_income_slider
+    return median_income_slider,
+
+
+@app.cell
+def __():
+    #price_trend_slider = mo.ui.slider(0,10, label= "Pricing Trend (lowest prices to highest)")
+    #price_trend_slider
+    return
 
 
 @app.cell
@@ -119,24 +156,23 @@ def __(calculate_scores, top_zip_codes_text):
 
 
 @app.cell
-def __(
-    build_rate_slider,
-    crime_slider,
-    crime_slider_2,
-    price_trend_slider,
-    update_list,
-):
+def __(median_income_slider, population_slider_slider, update_list):
     # Connect the sliders to the update_list function
-    crime_slider.observe(update_list, names='value')
-    crime_slider_2.observe(update_list, names='value')
-    build_rate_slider.observe(update_list, names='value')
-    price_trend_slider.observe(update_list, names='value')
+    #crime_slider.observe(update_list, names='value')
+    #crime_slider_2.observe(update_list, names='value')
+    #build_rate_slider.observe(update_list, names='value')
+    #price_trend_slider.observe(update_list, names='value')
+    median_income_slider.observe(update_list, names='value')
+    population_slider_slider.observe(update_list, names='value')
     return
 
 
 @app.cell
-def __():
-    return
+def __(Text, update_list):
+    # Display the top zip codes
+    top_zip_codes_text = Text()
+    update_list(None)  # Initial update
+    return top_zip_codes_text,
 
 
 @app.cell

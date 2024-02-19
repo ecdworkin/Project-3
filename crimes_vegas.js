@@ -1,26 +1,28 @@
-// Initialize Leaflet map
-var map = L.map('map').setView([0, 0], 2);
-  
-  // Add a tile layer.
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-}).addTo(map);
 
 // Use d3 to read the JSON file.
 // The data from the JSON file is arbitrarily named importedData as the argument.
-d3.json("crimedata.json").then((importedData) => {
-    // console.log(importedData);
-    let data = importedData;
+d3.json("http://localhost:8000/crime_data.json").then((importedData) => {
 
-})
+    // Create the tile layer that will be the background of our map.
+    let streetmap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
 
- // Process the data to aggregate points
+    // Initialize Leaflet map
+    var map =  L.map("map-id", {
+        center: [36.1716, -115.1391],
+        zoom: 13
+    });
+
+    streetmap.addTo(map);
+
     var pointCounts = {};
-    data.forEach(point => {
-    var latLng = [point.latitude, point.longitude];
-        var key = latLng.join(',');
-        pointCounts[key] = (pointCounts[key] || 0) + 1;
-
+    importedData.forEach(point => {
+        point["incidents"].forEach(incident => {
+            var latLng = [incident.incident_latitude, incident.incident_longitude];
+            var key = latLng.join(',');
+            pointCounts[key] = (pointCounts[key] || 0) + 1;
+        })
     });
 
     // Convert aggregated data into heatmap format
@@ -29,6 +31,7 @@ d3.json("crimedata.json").then((importedData) => {
         var latLng = key.split(',').map(Number);
         heatmapData.push([latLng[0], latLng[1], pointCounts[key]]);
     }
-
     // Create heatmap layer
-    var heat = L.heatLayer(heatmapData, { radius: 25 }).addTo(map);
+    L.heatLayer(heatmapData, { radius: 25 }).addTo(map);
+})
+

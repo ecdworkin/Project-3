@@ -52,15 +52,9 @@ def __(income_columns, median_income_df, np):
 def __(median_income_df):
     #add ranking for income
     median_income_df['Income Rank'] = median_income_df['Income Trend'].rank(method='dense', ascending=True).astype(int)
+    median_income_df.rename(columns={'Zip Code': 'Zip'}, inplace=True)
 
-    #print(median_income_df)
-    return
-
-
-@app.cell
-def __():
-    #read in crime rate CSV
-
+    print(median_income_df)
     return
 
 
@@ -71,8 +65,15 @@ def __(pd):
     population_data_df = pd.read_csv(population_data)
     population_data_df['Population Rank'] = population_data_df['% Change'].rank(method='dense', ascending=True).astype(int)
     #NOTE: We used ascending to assign rank so that the slider weight can be multiplied by the rank (desireability score will be highest number) 
-    #print(population_data_df)
+    print(population_data_df)
     return population_data, population_data_df
+
+
+@app.cell
+def __():
+    #read in crime rate CSV
+
+    return
 
 
 @app.cell
@@ -82,9 +83,12 @@ def __():
 
 
 @app.cell
-def __():
-    #merge dataframes on zip code?
-    return
+def __(median_income_df, pd, population_data_df):
+    #merge dataframes on zip code and delete all frames other than rank
+    merged_df = pd.merge(median_income_df, population_data_df, on='Zip')
+    rankings_df = merged_df[['Zip', 'Population Rank', 'Income Rank']]
+    print(rankings_df)
+    return merged_df, rankings_df
 
 
 @app.cell
@@ -114,6 +118,13 @@ def __():
 
 
 @app.cell
+def __():
+    #price_trend_slider = mo.ui.slider(0,10, label= "Pricing Trend (lowest prices to highest)")
+    #price_trend_slider
+    return
+
+
+@app.cell
 def __(mo):
     population_slider = mo.ui.slider(0, 10, label= "Population Growth")
     population_slider
@@ -127,52 +138,68 @@ def __(mo):
     return median_income_slider,
 
 
-@app.cell
-def __():
-    #price_trend_slider = mo.ui.slider(0,10, label= "Pricing Trend (lowest prices to highest)")
-    #price_trend_slider
-    return
+app._unparsable_cell(
+    r"""
+    # Values from sliders
+    population_weight = population_slider.value
+    income_weight = median_income_slider.value
+
+    #def update_top_5_zips():
+    # Calculate scores
+    #rankings_df.loc[:, 'Score'] = (rankings_df['Population Rank'] * population_weight) + \
+                                  (rankings_df['Income Rank'] * income_weight)
+
+    # Sort by score in descending order
+    #rankings_df_sorted = rankings_df.sort_values(by='Score', ascending=False)
+
+    # Display the updated dataframe
+    #print(rankings_df_sorted)
+    """,
+    name="__"
+)
 
 
 @app.cell
-def __(df, slider1, slider2, slider3, slider4):
+def __(
+    median_income_slider,
+    mo,
+    population_slider,
+    rankings_df,
+    top_5_zips_display,
+):
+    def update_top_5_zips():
+     # Calculate scores and assign using .loc
+        rankings_df.loc[:, 'Score'] = (rankings_df['Population Rank'] * population_slider.value) + \
+                                      (rankings_df['Income Rank'] * median_income_slider.value)
+
+
+        # Sort by score in descending order
+        rankings_df_sorted = rankings_df.sort_values(by='Score', ascending=False)
+
+        # Get the top 5 zip codes
+        top_5_zips = rankings_df_sorted.head(5)['Zip'].tolist()
+
+        # Convert the list of zip codes to a markdown string
+        top_5_zips_md = ', '.join(str(zip_code) for zip_code in top_5_zips)
+
+        # Update the markdown display with the new list of top 5 zip codes
+        top_5_zips_display.update(f'Top 5 Zip Codes: {top_5_zips_md}')
+
+        top_5_zips_md = ', '.join(str(zip_code) for zip_code in top_5_zips)
+
+        # Display the top 5 zip codes in markdown
+        mo.md("Top 5 Zip Codes: {top_5_zips_md}")
+
+    return update_top_5_zips,
+
+
+@app.cell
+def __(rankings_df_sorted):
     #area to display/calculate top zip codes
-    def calculate_scores():
-        df['score'] = df['var1'] * slider1.value + df['var2'] * slider2.value + \
-                      df['var3'] * slider3.value + df['var4'] * slider4.value
-        return df.sort_values('score', ascending=False)['zip_code'].head(5).tolist()
+    top_5_zips = rankings_df_sorted.head(5)
+    print(top_5_zips)
 
-
-    return calculate_scores,
-
-
-@app.cell
-def __(calculate_scores, top_zip_codes_text):
-    # Function to update the list of top zip codes
-    def update_list():
-        top_zip_codes = calculate_scores()
-        top_zip_codes_text.content = '\n'.join(top_zip_codes)
-    return update_list,
-
-
-@app.cell
-def __(median_income_slider, population_slider_slider, update_list):
-    # Connect the sliders to the update_list function
-    #crime_slider.observe(update_list, names='value')
-    #crime_slider_2.observe(update_list, names='value')
-    #build_rate_slider.observe(update_list, names='value')
-    #price_trend_slider.observe(update_list, names='value')
-    median_income_slider.observe(update_list, names='value')
-    population_slider_slider.observe(update_list, names='value')
-    return
-
-
-@app.cell
-def __(Text, update_list):
-    # Display the top zip codes
-    top_zip_codes_text = Text()
-    update_list(None)  # Initial update
-    return top_zip_codes_text,
+    return top_5_zips,
 
 
 @app.cell
@@ -183,13 +210,13 @@ def __(mo):
 
 @app.cell
 def __(mo):
-    mo.md("-Pricing Trends prefers upward trends in pricing from [insert year] to [insert year]")
+    mo.md("-Median Income prefers upward trends (using slope of line of best fit) in pricing from [2018] to [2022]")
     return
 
 
 @app.cell
 def __(mo):
-    mo.md("-Population Growth prefers upward trends in population from 2020 to 2023")
+    mo.md("-Population Growth prefers upward changes in population from 2020 to 2023")
     return
 
 

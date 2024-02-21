@@ -23,7 +23,6 @@ def __(pd):
     for col in income_columns:
         # Remove commas and convert to numeric
         median_income_df[col] = median_income_df[col].str.replace(',', '').astype(float)
-
     return col, income_columns, median_income, median_income_df
 
 
@@ -44,7 +43,6 @@ def __(income_columns, median_income_df, np):
 
     # Apply the function to calculate the income trend
     median_income_df['Income Trend'] = median_income_df.apply(calculate_slope, axis=1)
-        
     return calculate_slope,
 
 
@@ -70,25 +68,58 @@ def __(pd):
 
 
 @app.cell
-def __():
-    #read in crime rate CSV
-
-    return
-
-
-@app.cell
-def __():
+def __(pd):
     #read in pricing trend CSV
-    return
+    pricing_file_path = "Resources/las_vegas_home_values_by_zip_codes.csv"
+    pricing_df = pd.read_csv(pricing_file_path)
+    pivoted_prices_df = pricing_df.pivot(index='ZipCode', columns='Date', values='Value').reset_index()
+    pivoted_prices_df.columns.name = None
+    pivoted_prices_df = pivoted_prices_df.rename(columns=lambda x: 'Value_' + x if x != 'ZipCode' else x)
+
+    #print(pivoted_prices_df)
+    return pivoted_prices_df, pricing_df, pricing_file_path
 
 
 @app.cell
-def __(median_income_df, pd, population_data_df):
+def __(np, pivoted_prices_df):
+    #create the slope
+    def calculate_pricing_slope(row):
+        # Extract the non-null values and their corresponding dates
+        row = row.drop(labels=['ZipCode'])
+        values = row.dropna().values
+        x_values = np.arange(len(values))
+
+        # Perform linear regression if there are at least two points
+        if len(values) >= 2:
+            slope, intercept = np.polyfit(x_values, values, 1)
+            return slope
+        else:
+            return np.nan
+
+    # Apply the function to each row of the pivoted dataframe
+    pivoted_prices_df['Slope'] = pivoted_prices_df.apply(calculate_pricing_slope, axis=1)
+
+    #print(pivoted_prices_df)
+    return calculate_pricing_slope,
+
+
+@app.cell
+def __(pivoted_prices_df):
+    clean_prices_df = pivoted_prices_df[['ZipCode', 'Slope']]
+    clean_prices_df = clean_prices_df.rename(columns={'ZipCode': 'Zip'})
+    clean_prices_df['Pricing Rank'] = clean_prices_df['Slope'].rank(method='min')
+    print(clean_prices_df)
+    return clean_prices_df,
+
+
+@app.cell
+def __(clean_prices_df, median_income_df, pd, population_data_df):
     #merge dataframes on zip code and delete all frames other than rank
     merged_df = pd.merge(median_income_df, population_data_df, on='Zip')
-    rankings_df = merged_df[['Zip', 'Population Rank', 'Income Rank']]
+    fully_merged_df = pd.merge(merged_df, clean_prices_df, on='Zip')
+    rankings_df = fully_merged_df[['Zip', 'Population Rank', 'Income Rank', 'Pricing Rank']]
     print(rankings_df)
-    return merged_df, rankings_df
+    return fully_merged_df, merged_df, rankings_df
 
 
 @app.cell
@@ -118,10 +149,10 @@ def __():
 
 
 @app.cell
-def __():
-    #price_trend_slider = mo.ui.slider(0,10, label= "Pricing Trend (lowest prices to highest)")
-    #price_trend_slider
-    return
+def __(mo):
+    price_trend_slider = mo.ui.slider(0,10, label= "Pricing Trend (lowest prices to highest)")
+    price_trend_slider
+    return price_trend_slider,
 
 
 @app.cell
@@ -138,25 +169,35 @@ def __(mo):
     return median_income_slider,
 
 
-app._unparsable_cell(
-    r"""
+@app.cell
+def __(
+    median_income_slider,
+    population_slider,
+    price_trend_slider,
+    rankings_df,
+):
     # Values from sliders
     population_weight = population_slider.value
     income_weight = median_income_slider.value
+    pricing_weight = price_trend_slider.value
 
     #def update_top_5_zips():
     # Calculate scores
-    #rankings_df.loc[:, 'Score'] = (rankings_df['Population Rank'] * population_weight) + \
-                                  (rankings_df['Income Rank'] * income_weight)
+    rankings_df.loc[:, 'Score'] = (rankings_df['Population Rank'] * population_weight) + \
+        (rankings_df['Income Rank'] * income_weight) + \
+        (rankings_df['Pricing Rank'] * pricing_weight)
 
     # Sort by score in descending order
-    #rankings_df_sorted = rankings_df.sort_values(by='Score', ascending=False)
+    rankings_df_sorted = rankings_df.sort_values(by='Score', ascending=False)
 
     # Display the updated dataframe
-    #print(rankings_df_sorted)
-    """,
-    name="__"
-)
+    print(rankings_df_sorted)
+    return (
+        income_weight,
+        population_weight,
+        pricing_weight,
+        rankings_df_sorted,
+    )
 
 
 @app.cell
@@ -189,7 +230,6 @@ def __(
 
         # Display the top 5 zip codes in markdown
         mo.md("Top 5 Zip Codes: {top_5_zips_md}")
-
     return update_top_5_zips,
 
 
@@ -198,7 +238,6 @@ def __(rankings_df_sorted):
     #area to display/calculate top zip codes
     top_5_zips = rankings_df_sorted.head(5)
     print(top_5_zips)
-
     return top_5_zips,
 
 

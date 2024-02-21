@@ -10,3 +10,5 @@ This project is not particularly effected by ethics considerations. We would sti
 
  Sources: 
  Population Data, the US Census Bureau 
+
+Presentation: https://docs.google.com/presentation/d/10NOiJdg4prvxgz6z4ThxvbC_dnh5TeYNM_4rI4W1wOo/edit?usp=sharing
